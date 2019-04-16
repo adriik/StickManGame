@@ -321,7 +321,7 @@ namespace Microsoft.Samples.Kinect.BodyBasics
         private void Reader_FrameArrived(object sender, BodyFrameArrivedEventArgs e)
         {
             bool dataReceived = false;
-
+            
             using (BodyFrame bodyFrame = e.FrameReference.AcquireFrame())
             {
                 if (bodyFrame != null)
@@ -329,8 +329,9 @@ namespace Microsoft.Samples.Kinect.BodyBasics
                     if (this.bodies == null)
                     {
                         this.bodies = new Body[bodyFrame.BodyCount];
-                    }
 
+                    }
+                    System.Diagnostics.Debug.WriteLine(bodies.Length);
                     // The first time GetAndRefreshBodyData is called, Kinect will allocate each Body in the array.
                     // As long as those body objects are not disposed and not set to null in the array,
                     // those body objects will be re-used.
@@ -348,197 +349,207 @@ namespace Microsoft.Samples.Kinect.BodyBasics
                     dc.DrawRectangle(Brushes.Black, null, new Rect(0.0, 0.0, this.displayWidth, this.displayHeight));
 
                     int penIndex = 0;
-                    //foreach (Body body in this.bodies)
-
-                    Pen drawPen = this.bodyColors[penIndex++];
-
-                    if (this.bodies[0].IsTracked)
+                    foreach (Body body in this.bodies)
                     {
-                        this.DrawClippedEdges(this.bodies[0], dc);
 
-                        IReadOnlyDictionary<JointType, Joint> joints = this.bodies[0].Joints;
+                        Pen drawPen = this.bodyColors[penIndex++];
 
-                        // convert the joint points to depth (display) space
-                        Dictionary<JointType, Point> jointPoints = new Dictionary<JointType, Point>();
-
-                        foreach (JointType jointType in joints.Keys)
+                        if (body.IsTracked)
                         {
-                            // sometimes the depth(Z) of an inferred joint may show as negative
-                            // clamp down to 0.1f to prevent coordinatemapper from returning (-Infinity, -Infinity)
-                            CameraSpacePoint position = joints[jointType].Position;
-                            if (position.Z < 0)
+
+                            this.DrawClippedEdges(body, dc);
+
+                            IReadOnlyDictionary<JointType, Joint> joints = body.Joints;
+
+                            // convert the joint points to depth (display) space
+                            Dictionary<JointType, Point> jointPoints = new Dictionary<JointType, Point>();
+
+                            foreach (JointType jointType in joints.Keys)
                             {
-                                position.Z = InferredZPositionClamp;
+                                // sometimes the depth(Z) of an inferred joint may show as negative
+                                // clamp down to 0.1f to prevent coordinatemapper from returning (-Infinity, -Infinity)
+                                CameraSpacePoint position = joints[jointType].Position;
+                                if (position.Z < 0)
+                                {
+                                    position.Z = InferredZPositionClamp;
+                                }
+
+                                DepthSpacePoint depthSpacePoint = this.coordinateMapper.MapCameraPointToDepthSpace(position);
+                                jointPoints[jointType] = new Point(depthSpacePoint.X, depthSpacePoint.Y);
                             }
 
-                            DepthSpacePoint depthSpacePoint = this.coordinateMapper.MapCameraPointToDepthSpace(position);
-                            jointPoints[jointType] = new Point(depthSpacePoint.X, depthSpacePoint.Y);
-                        }
+                            this.DrawBody(joints, jointPoints, dc, drawPen);
 
-                        this.DrawBody(joints, jointPoints, dc, drawPen);
-
-                        this.DrawHand(this.bodies[0].HandLeftState, jointPoints[JointType.HandLeft], dc, 0);
-                        this.DrawHand(this.bodies[0].HandRightState, jointPoints[JointType.HandRight], dc, 1);
+                            this.DrawHand(body.HandLeftState, jointPoints[JointType.HandLeft], dc, 0);
+                            this.DrawHand(body.HandRightState, jointPoints[JointType.HandRight], dc, 1);
 
 
 
-                        SolidColorBrush mySolidColorBrush = new SolidColorBrush();
-                        mySolidColorBrush.Color = Color.FromArgb(255, 255, 255, 0);
+                            SolidColorBrush mySolidColorBrush = new SolidColorBrush();
+                            mySolidColorBrush.Color = Color.FromArgb(255, 255, 255, 0);
 
-                        Pen blackBluePen = new Pen();
-                        blackBluePen.Thickness = 5;
-                        blackBluePen.LineJoin = PenLineJoin.Bevel;
-                        blackBluePen.StartLineCap = PenLineCap.Triangle;
-                        blackBluePen.EndLineCap = PenLineCap.Round;
-                        LinearGradientBrush blueBlackLGB = new LinearGradientBrush();
-                        blueBlackLGB.StartPoint = new Point(0, 0);
-                        blueBlackLGB.EndPoint = new Point(1, 1);
-                        blackBluePen.Brush = blueBlackLGB;
-                        double radius = 30;
-                        if (!flagaZatrzymania)
-                        {
-                            if (jointPoints[JointType.HandLeft].X > point2.X - radius && jointPoints[JointType.HandLeft].X < point2.X + radius && jointPoints[JointType.HandLeft].Y > point2.Y - radius && jointPoints[JointType.HandLeft].Y < point2.Y + radius)
+                            Pen blackBluePen = new Pen();
+                            blackBluePen.Thickness = 5;
+                            blackBluePen.LineJoin = PenLineJoin.Bevel;
+                            blackBluePen.StartLineCap = PenLineCap.Triangle;
+                            blackBluePen.EndLineCap = PenLineCap.Round;
+                            LinearGradientBrush blueBlackLGB = new LinearGradientBrush();
+                            blueBlackLGB.StartPoint = new Point(0, 0);
+                            blueBlackLGB.EndPoint = new Point(1, 1);
+                            blackBluePen.Brush = blueBlackLGB;
+                            double radius = 30;
+
+
+                            if (!flagaZatrzymania)
                             {
-                                Random rnd = new Random();
-                                point2.X = rnd.Next(100, 400);
-                                point2.Y = rnd.Next(100, 400);
-                                licznikLewa++;
-                                if (flaga == false)
-                                {
-                                    time = new System.Timers.Timer(20000);
 
-                                    time.Elapsed += new ElapsedEventHandler(OnTimedEvent);
-                                    timeSekundy = new System.Timers.Timer(1000);
-                                    timeSekundy.Elapsed += new ElapsedEventHandler(OnTimedSecEvent);
-                                    timeSekundy.Start();
-                                    time.Start();
-                                    flaga = true;
+                                if (jointPoints[JointType.HandLeft].X > point2.X - radius && jointPoints[JointType.HandLeft].X < point2.X + radius && jointPoints[JointType.HandLeft].Y > point2.Y - radius && jointPoints[JointType.HandLeft].Y < point2.Y + radius)
+                                {
+                                    Random rnd = new Random();
+                                    point2.X = rnd.Next(100, 400);
+                                    point2.Y = rnd.Next(100, 400);
+                                    licznikLewa++;
+                                    if (flaga == false)
+                                    {
+                                        time = new System.Timers.Timer(20000);
+
+                                        time.Elapsed += new ElapsedEventHandler(OnTimedEvent);
+                                        timeSekundy = new System.Timers.Timer(1000);
+                                        timeSekundy.Elapsed += new ElapsedEventHandler(OnTimedSecEvent);
+                                        timeSekundy.Start();
+                                        time.Start();
+                                        flaga = true;
+                                    }
+                                }
+                                else
+                                {
+                                    dc.DrawEllipse(mySolidColorBrush, blackBluePen, point2, radius, radius);
+                                }
+
+
+                                SolidColorBrush mySolidColorBrush2 = new SolidColorBrush();
+                                mySolidColorBrush2.Color = Color.FromArgb(255, 255, 100, 0);
+
+                                if (jointPoints[JointType.HandRight].X > point3.X - radius && jointPoints[JointType.HandRight].X < point3.X + radius && jointPoints[JointType.HandRight].Y > point3.Y - radius && jointPoints[JointType.HandRight].Y < point3.Y + radius)
+                                {
+                                    Random rnd = new Random();
+                                    point3.X = rnd.Next(100, 400);
+                                    point3.Y = rnd.Next(100, 400);
+                                    licznikPrawa++;
+                                    if (flaga == false)
+                                    {
+                                        time = new System.Timers.Timer(10000);
+                                        time.Elapsed += new ElapsedEventHandler(OnTimedEvent);
+
+                                        timeSekundy = new System.Timers.Timer(1000);
+                                        timeSekundy.Elapsed += new ElapsedEventHandler(OnTimedSecEvent);
+                                        timeSekundy.Start();
+
+                                        time.Start();
+                                        flaga = true;
+                                    }
+                                }
+                                else
+                                {
+                                    dc.DrawEllipse(mySolidColorBrush2, blackBluePen, point3, radius, radius);
                                 }
                             }
                             else
                             {
-                                dc.DrawEllipse(mySolidColorBrush, blackBluePen, point2, radius, radius);
-                            }
-
-
-                            SolidColorBrush mySolidColorBrush2 = new SolidColorBrush();
-                            mySolidColorBrush2.Color = Color.FromArgb(255, 255, 100, 0);
-
-                            if (jointPoints[JointType.HandRight].X > point3.X - radius && jointPoints[JointType.HandRight].X < point3.X + radius && jointPoints[JointType.HandRight].Y > point3.Y - radius && jointPoints[JointType.HandRight].Y < point3.Y + radius)
-                            {
-                                Random rnd = new Random();
-                                point3.X = rnd.Next(100, 400);
-                                point3.Y = rnd.Next(100, 400);
-                                licznikPrawa++;
-                                if (flaga == false)
+                                if (jointPoints[JointType.HandRight].X > 300 && jointPoints[JointType.HandRight].X < 400 && jointPoints[JointType.HandRight].Y > 5 && jointPoints[JointType.HandRight].Y < 55)
                                 {
-                                    time = new System.Timers.Timer(10000);
-                                    time.Elapsed += new ElapsedEventHandler(OnTimedEvent);
+                                    WynikLabel.Visibility = Visibility.Hidden;
+                                    obraz.Visibility = Visibility.Visible;
+                                    licznikLewa = 0;
+                                    licznikPrawa = 0;
+                                    ResetPrzycisk.Visibility = Visibility.Hidden;
+                                    flagaZatrzymania = false;
+                                    flaga = false;
+                                    Czas.Visibility = Visibility.Visible;
+                                    ZresetowanieLabel.Visibility = Visibility.Hidden;
+                                }
 
-                                    timeSekundy = new System.Timers.Timer(1000);
-                                    timeSekundy.Elapsed += new ElapsedEventHandler(OnTimedSecEvent);
-                                    timeSekundy.Start();
-
-                                    time.Start();
-                                    flaga = true;
+                                if (jointPoints[JointType.HandLeft].X > 300 && jointPoints[JointType.HandLeft].X < 400 && jointPoints[JointType.HandLeft].Y > 5 && jointPoints[JointType.HandLeft].Y < 55)
+                                {
+                                    WynikLabel.Visibility = Visibility.Hidden;
+                                    obraz.Visibility = Visibility.Visible;
+                                    licznikLewa = 0;
+                                    licznikPrawa = 0;
+                                    ResetPrzycisk.Visibility = Visibility.Hidden;
+                                    flagaZatrzymania = false;
+                                    flaga = false;
+                                    Czas.Visibility = Visibility.Visible;
+                                    ZresetowanieLabel.Visibility = Visibility.Hidden;
                                 }
                             }
-                            else
-                            {
-                                dc.DrawEllipse(mySolidColorBrush2, blackBluePen, point3, radius, radius);
-                            }
+                            FormattedText formattedText = new FormattedText(
+                            licznikLewa.ToString(),
+                            CultureInfo.GetCultureInfo("en-us"),
+                            FlowDirection.LeftToRight,
+                            new Typeface("Verdana"),
+                            32,
+                            Brushes.White);
+                            dc.DrawText(formattedText, new Point(100, 350));
+
+                            FormattedText formattedText2 = new FormattedText(
+                            licznikPrawa.ToString(),
+                            CultureInfo.GetCultureInfo("en-us"),
+                            FlowDirection.LeftToRight,
+                            new Typeface("Verdana"),
+                            32,
+                            Brushes.White);
+                            dc.DrawText(formattedText2, new Point(400, 350));
+
+                            FormattedText formattedTextCzas = new FormattedText(
+                            "Pozostało: " + sekundy.ToString(),
+                            CultureInfo.GetCultureInfo("en-us"),
+                            FlowDirection.LeftToRight,
+                            new Typeface("Verdana"),
+                            15,
+                            Brushes.White);
+                            dc.DrawText(formattedTextCzas, new Point(10, 10));
+
                         }
-                        else
+
+                        if (flagaZatrzymania == true)
                         {
-                            if (jointPoints[JointType.HandRight].X > 300 && jointPoints[JointType.HandRight].X < 400 && jointPoints[JointType.HandRight].Y > 5 && jointPoints[JointType.HandRight].Y < 55)
-                            {
-                                WynikLabel.Visibility = Visibility.Hidden;
-                                obraz.Visibility = Visibility.Visible;
-                                licznikLewa = 0;
-                                licznikPrawa = 0;
-                                ResetPrzycisk.Visibility = Visibility.Hidden;
-                                flagaZatrzymania = false;
-                                flaga = false;
-                                Czas.Visibility = Visibility.Visible;
-                                ZresetowanieLabel.Visibility = Visibility.Hidden;
-                            }
+                            WynikLabel.FontSize = 50;
 
-                            if (jointPoints[JointType.HandLeft].X > 300 && jointPoints[JointType.HandLeft].X < 400 && jointPoints[JointType.HandLeft].Y > 5 && jointPoints[JointType.HandLeft].Y < 55)
-                            {
-                                WynikLabel.Visibility = Visibility.Hidden;
-                                obraz.Visibility = Visibility.Visible;
-                                licznikLewa = 0;
-                                licznikPrawa = 0;
-                                ResetPrzycisk.Visibility = Visibility.Hidden;
-                                flagaZatrzymania = false;
-                                flaga = false;
-                                Czas.Visibility = Visibility.Visible;
-                                ZresetowanieLabel.Visibility = Visibility.Hidden;
-                            }
+                            int wynik = licznikPrawa + licznikLewa;
+                            WynikLabel.Content = "Wynik = " + wynik;
+                            WynikLabel.Visibility = Visibility.Visible;
+                            ResetPrzycisk.Visibility = Visibility.Visible;
+                            Czas.Visibility = Visibility.Hidden;
+                            timeSekundy.Stop();
+
+
+                            Pen blackBluePen4 = new Pen();
+                            blackBluePen4.Thickness = 5;
+                            blackBluePen4.LineJoin = PenLineJoin.Bevel;
+                            blackBluePen4.StartLineCap = PenLineCap.Triangle;
+                            blackBluePen4.EndLineCap = PenLineCap.Round;
+                            SolidColorBrush mySolidColorBrush4 = new SolidColorBrush();
+                            mySolidColorBrush4.Color = Color.FromArgb(255, 0, 255, 0);
+
+
+                            Rect blueRectangle = new Rect();
+                            blueRectangle.Height = 50;
+                            blueRectangle.Width = 100;
+                            blueRectangle.X = 300;
+                            blueRectangle.Y = 5;
+                            ZresetowanieLabel.Visibility = Visibility.Visible;
+                            dc.DrawRectangle(mySolidColorBrush4, blackBluePen4, blueRectangle);
+
+
                         }
-                        FormattedText formattedText = new FormattedText(
-                        licznikLewa.ToString(),
-                        CultureInfo.GetCultureInfo("en-us"),
-                        FlowDirection.LeftToRight,
-                        new Typeface("Verdana"),
-                        32,
-                        Brushes.White);
-                        dc.DrawText(formattedText,new Point(100,350));
-
-                        FormattedText formattedText2 = new FormattedText(
-                        licznikPrawa.ToString(),
-                        CultureInfo.GetCultureInfo("en-us"),
-                        FlowDirection.LeftToRight,
-                        new Typeface("Verdana"),
-                        32,
-                        Brushes.White);
-                        dc.DrawText(formattedText2, new Point(400, 350));
-
-                        FormattedText formattedTextCzas = new FormattedText(
-                        "Pozostało: " + sekundy.ToString(),
-                        CultureInfo.GetCultureInfo("en-us"),
-                        FlowDirection.LeftToRight,
-                        new Typeface("Verdana"),
-                        15,
-                        Brushes.White);
-                        dc.DrawText(formattedTextCzas, new Point(10,10));
-
-                    }
-
-                    if (flagaZatrzymania == true)
-                    {
-                        WynikLabel.FontSize = 50;
-
-                        int wynik = licznikPrawa + licznikLewa;
-                        WynikLabel.Content = "Wynik = " + wynik;
-                        WynikLabel.Visibility = Visibility.Visible;
-                        ResetPrzycisk.Visibility = Visibility.Visible;
-                        Czas.Visibility = Visibility.Hidden;
-                        timeSekundy.Stop();
-
-
-                        Pen blackBluePen4 = new Pen();
-                        blackBluePen4.Thickness = 5;
-                        blackBluePen4.LineJoin = PenLineJoin.Bevel;
-                        blackBluePen4.StartLineCap = PenLineCap.Triangle;
-                        blackBluePen4.EndLineCap = PenLineCap.Round;
-                        SolidColorBrush mySolidColorBrush4 = new SolidColorBrush();
-                        mySolidColorBrush4.Color = Color.FromArgb(255, 0, 255, 0);
-
-
-                        Rect blueRectangle = new Rect();
-                        blueRectangle.Height = 50;
-                        blueRectangle.Width = 100;
-                        blueRectangle.X = 300;
-                        blueRectangle.Y = 5;
-                        ZresetowanieLabel.Visibility = Visibility.Visible;
-                        dc.DrawRectangle(mySolidColorBrush4, blackBluePen4, blueRectangle);
-
-                        
                     }
                         // prevent drawing outside of our render area
                     this.drawingGroup.ClipGeometry = new RectangleGeometry(new Rect(0.0, 0.0, this.displayWidth, this.displayHeight));
                 }
+            }
+            else
+            {
+                
             }
         }
         private void PrzyciskEvent(object sender, RoutedEventArgs e)
